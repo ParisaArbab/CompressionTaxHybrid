@@ -1,0 +1,7 @@
+OUTPUT (last 5 lines):
+  ----------------------------------------------------------------------
+  Ran 53 tests in 0.995s
+  FAILED (failures=3, skipped=1)
+  Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+[full output: ~/.local/share/rtk/tee/1786635547_test.log]

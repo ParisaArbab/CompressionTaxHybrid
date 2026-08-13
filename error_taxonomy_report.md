@@ -1,131 +1,146 @@
 # Error Taxonomy Report: The rtk "Compression Tax" on Bug Localization
 
 **Work Package 1 — Baseline Auditing**
-**Benchmark:** `princeton-nlp/SWE-bench_Lite` (300 instances; 15-instance pilot sample)
-**Localizer under test:** FlexFL + GraphLocator hybrid agent (`agent_localizer.py`)
-**Compressor under test:** `rtk` (re-implemented per its documented behavior — see `rtk_reference_notes.md`)
-**Status:** v0.1 — pilot findings from a reconstructed example + a completed, ready-to-run
-harness. Full-scale results (Docker-captured logs × 15–20 instances × live LLM
-calls) require Docker and `ANTHROPIC_API_KEY`, neither available in this session.
-Re-run `run_wp1_benchmark.py` then `compression_tax_analyzer.py` to populate
-the per-instance table in Section 4 with real numbers.
+**Compressor:** the real `rtk` binary v0.45.0 (rtk-ai/rtk), installed and run live —
+not a re-implementation. Install: `curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh`
+**Benchmark:** `princeton-nlp/SWE-bench_Lite`, 2 instances run end-to-end live in this
+session (`pytest-dev__pytest-7490`, `django__django-12747`); repos cloned at the
+exact `base_commit`, gold `test_patch` applied, real interpreter installed
+(Python 3.9 via `uv`, since these instances predate Python 3.12 compatibility),
+real test suite executed.
+**All raw evidence is in `data/real_runs/`** — every number below is read
+directly off those files or off `rtk gain`'s own tracker, not estimated.
 
 ---
 
-## 1. Research question
+## 1. What is genuinely live in this report, and what is not
 
-> Does reducing token noise (`rtk`) actually help an LLM agent pinpoint bugs
-> faster, or does it make localization *harder* because vital clues are
-> missing?
-
-## 2. Method
-
-Each instance is run twice through the identical localization agent:
-
-| Group | Terminal output the agent sees |
+| Claim | Status |
 |---|---|
-| **Control** | Raw, unedited `pytest`/test-runner stdout+stderr |
-| **Static**  | The same output passed through `rtk`-style compression |
+| rtk was actually installed and actually run | **Real.** `rtk 0.45.0`, official binary, official install script. |
+| The two repos were actually cloned, checked out at the real SWE-bench `base_commit`, and the real gold `test_patch` applied | **Real.** See `git log -1` output captured during the run. |
+| The captured "raw" failure logs are literal captures of a real `pytest` / Django test-runner invocation | **Real.** Not reconstructed — these are the actual `data/real_runs/*_raw_stdout*.txt` files. |
+| Compression ratios (86.8%, 92.9%, 96.0%) | **Real.** Read directly from `rtk gain`'s own SQLite-backed tracker (`data/real_runs/rtk_gain_report.txt`), not recomputed by us. |
+| The localization-accuracy comparison in Section 4 | **Real reasoning, but a manual proxy, not the automated `agent_localizer.py` pipeline.** No `ANTHROPIC_API_KEY` is available in this sandboxed environment, so I (Claude, in this conversation) performed the search/reasoning steps myself against the live repo — genuinely, and genuinely blind to the gold patch until after each prediction was recorded — rather than `run_wp1_benchmark.py` driving the agent via the API. This is a legitimate but small-N substitute; see the explicit caveats in Section 4 and the ask at the end of this report.
 
-A "hit" = the agent's top-5 ranked functions include a real ground-truth
-function (derived from the gold patch diff, matched at the enclosing
-`def`/`class` level). **Compression Tax** = an instance where Control hits
-and Static misses.
+## 2. Real compression results
 
-## 3. Why we expect a tax at all: rtk's documented mechanism
+Read straight from `rtk gain` after both runs (`data/real_runs/rtk_gain_report.txt`):
 
-`rtk` collapses test output to (a) a bare pass/fail count and (b) one
-short line per failure. This is corroborated by rtk's own documentation
-and by an independently reported GitHub issue where a Playwright E2E
-failure became undebuggable after compression (full sourcing in
-`rtk_reference_notes.md`). The mechanism is not a bug in rtk — it is the
-intended trade-off — but bug localization is precisely the task most
-sensitive to the specific detail rtk is designed to discard.
-
-## 4. Exhibit A — worked example (`astropy__astropy-12907`)
-
-This is the same instance GraphLocator uses as its running example: a
-nested `CompoundModel` produces a wrong `separability_matrix`, with the
-true root cause several call-hops away in `_cstack` → `_coord_matrix`.
-
-**Compression result:** 5,684 → 237 characters, **95.8% reduction**
-(within rtk's claimed 60–90% range for this class of command, on the high
-end — consistent with rtk's own report of near-total collapse when only a
-couple of tests fail out of many).
-
-**What survived compression:**
-```
-[rtk] 7 passed, 2 failed.
-FAILED astropy/modeling/tests/test_separable.py::test_separable[compound_model6-result6]: AssertionError:
-FAILED astropy/modeling/tests/test_separable.py::test_separable[compound_model9-result9]: AssertionError:
-```
-
-**What was destroyed:**
-- The actual expected-vs-actual boolean matrices (the exact cells that
-  differ are the only signal that distinguishes "wrong at `_coord_matrix`"
-  from "wrong at `_cstack`" from "wrong at `_separable`").
-- The call-stack frames from the assertion site down through
-  `separability_matrix` → `_separable` → `_cstack` → `_coord_matrix` —
-  i.e. the *entire* causal chain GraphLocator's paper shows an LLM needs
-  to walk to disentangle a symptom-to-cause mismatch (its Fig. 1a and
-  Fig. 4 use this exact bug to illustrate that mismatch type).
-- The fact that **two different parametrized sub-tests** fail with
-  structurally similar-but-different mismatches — a pattern that (per
-  GraphLocator's one-to-many/causal framing) is itself informative, and
-  is invisible once both collapse to identical one-line reasons.
-
-**Expected effect on the agent:** with only "`AssertionError:`" to go on,
-the FlexFL/GraphLocator agent has no symptom-vertex signal beyond the
-function name already present in the *issue description* — it cannot
-independently corroborate or refine that guess from execution evidence,
-and cannot perform GraphLocator's abductive walk down the causal chain,
-because there is no chain left in the input. This is a predicted
-Compression-Tax case; Section 4b will confirm with a live agent run.
-
-### 4b. Live-run outcome
-*(pending Docker + API access — placeholder for `run_wp1_benchmark.py` output)*
-
-| | Control (raw) | Static (rtk) |
-|---|---|---|
-| Ranked functions | *pending* | *pending* |
-| Hit@5 | *pending* | *pending* |
-
-## 5. Error taxonomy
-
-Five categories of destroyed information, derived from rtk's documented
-compression behavior and cross-checked against what FlexFL/GraphLocator
-identify as necessary inputs for accurate localization:
-
-| ID | Category | What rtk drops | Why it matters for FL (per FlexFL/GraphLocator) |
+| # | Command | Raw → compressed | Reduction |
 |---|---|---|---|
-| **T1** | Lost value evidence | Array/JSON/diff dumps, truncated to a few lines or removed entirely | GraphLocator's abductive reasoning step conditions on *which* code entities plausibly explain the observed values, not just that a test failed |
-| **T2** | Lost stack frames | Intermediate call-stack frames between the assertion site and the true fault | Directly breaks GraphLocator's "symptom-to-cause distance" traversal — the paper shows localization accuracy drops sharply as this distance grows even *with* full information (Fig. 6); rtk actively increases effective distance by removing the path |
-| **T3** | Collapsed sub-failures | Multiple parametrized/related failing tests reduced to a single count | Hides the one-to-many pattern GraphLocator explicitly models via dynamic issue disentangling (Section 2.2 of that paper) |
-| **T4** | Dropped log severity | Non-error log lines (WARNING/DEBUG/INFO) | FlexFL's function-call design assumes the agent can request arbitrary code/log context; rtk removes it upstream, before the agent gets a chance to ask |
-| **T5** | Over-summarized reason | The one surviving line is too generic (e.g. bare `AssertionError:`) to discriminate between causal-chain candidates | Equivalent to FlexFL's Agent4LR losing its "double-check the code snippet against the evidence" signal — there is no longer evidence to check against |
+| 1 | `rtk test python runtests.py delete --settings=test_sqlite -v2` (django, real failing run) | ~2.0K → ~80 tokens | **96.0%** |
+| 2 | `rtk summary <pytest -v -k TestXFail>` (pytest, real failing run, `summary` subcommand) | ~1.9K → ~140 tokens | 92.9% |
+| 3 | `rtk test python -m pytest testing/test_skipping.py -k TestXFail` (pytest, real failing run, `test` subcommand) | ~1.1K → ~150 tokens | **86.8%** |
 
-`compression_tax_analyzer.py` auto-tags each empirical tax case with T1–T5
-using pattern matching against `rtk_compressor.py`'s own
-`dropped_categories` output plus the surviving text, then writes the
-per-instance table below.
+Byte-level (from the actual files, not tokens): pytest run 7,836 → 991 bytes;
+django run 7,951 → 314 bytes.
 
-## 6. Per-instance results (auto-generated)
+## 3. Real finding: rtk behaves differently depending on whether it recognizes the runner
 
-*(Populated by `compression_tax_analyzer.py` from `results/wp1_results.jsonl`
-once the live benchmark has run. Currently empty — no live runs executed
-in this session.)*
+This was not hypothesized in advance — it fell out of running two different
+repos.
 
-## 7. Preliminary conclusion & recommendation
+**pytest (recognized runner, `rtk test`):** rtk correctly parsed pass/fail
+status per test and preserved the failing test's one-line reason:
+```
+[FAIL] FAILURES:
+  FAILED test_dynamic_xfail_set_during_runtest_failed.py::test_this - assert 0
+  FAILED testing/test_skipping.py::TestXFail::test_dynamic_xfail_set_during_runtest_failed
+  FAILED testing/test_skipping.py::TestXFail::test_dynamic_xfail_set_during_runtest_passed_strict
 
-Even a single, carefully-verified example shows rtk's compression removing
-exactly the categories of information (T1 value evidence, T2 causal-chain
-frames) that GraphLocator's own paper identifies as the deciding factor
-between successful and failed localization on symptom-to-cause bugs — and
-this class of bug is common in SWE-bench Lite. This motivates WP2/WP3:
-rather than a fixed compression policy, the proxy should detect when the
-agent is in a fault-diagnosis phase and either relax compression (WP2) or
-retain a zoom-in path back to the raw log (WP3).
+SUMMARY:
+  ============================== 1 failed in 0.01s ===============================
+  ============================== 1 passed in 0.00s ===============================
+  ================= 2 failed, 32 passed, 47 deselected in 1.01s ==================
+```
+(full file: `data/real_runs/pytest-7490_rtk_test_output.txt`)
 
-**Immediate next step:** run `docker_harness.py` + `run_wp1_benchmark.py`
-on the 15-instance pilot to replace this qualitative exhibit with
-quantitative Control-vs-Static hit rates and populate Section 6.
+**Django's own test runner (not a runner rtk has framework-specific parsing
+for):** `rtk test` fell back to a generic tail-truncation and returned
+**only the last 5 lines of output**:
+```
+OUTPUT (last 5 lines):
+  ----------------------------------------------------------------------
+  Ran 53 tests in 0.995s
+  FAILED (failures=3, skipped=1)
+  Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+```
+(full file: `data/real_runs/django-12747_rtk_test_output.txt`)
+
+This is a materially different — and worse — failure mode than "keeps a
+one-line reason per failing test." The compressed output doesn't even name
+*which* three tests failed, let alone why. The real raw log
+(`data/real_runs/django-12747_raw_stdout_failing.txt`) contains three full
+`FAIL:` blocks with tracebacks and assertion diffs, e.g.:
+```
+FAIL: test_fast_delete_empty_no_update_can_self_select (delete.tests.FastDeleteTests)
+...
+AssertionError: Tuples differ: (0, {'delete.User': 0}) != (0, {})
+```
+— all of it dropped. This becomes taxonomy category **T6** below, in
+addition to the five categories carried over from the earlier draft (which
+were themselves derived from rtk's own documentation, not fabricated, but
+are now demoted to secondary since we have direct evidence).
+
+## 4. Live localization trial (manual proxy, N=1 clean, with explicit caveats)
+
+**Instance:** `pytest-dev__pytest-7490` — the real xfail-marker bug above.
+**Method:** I read the problem statement, then separately reasoned about
+what each condition's log would let an FL agent conclude, then explored the
+real repo (`grep -n xfail src/_pytest/skipping.py`) exactly as
+`agent_localizer.py`'s RDFS search would, then recorded a top-5 prediction
+for each condition, **then and only then** read `gold_patch.diff`.
+
+**Caveat, stated plainly:** I ran one exploration pass and reasoned about
+what each condition's text would support, rather than running two fully
+independent agent sessions with separate token budgets the way
+`run_wp1_benchmark.py` would via the API. That's a real methodological gap
+relative to the intended automated benchmark — treat this as a qualitative
+pilot data point, not a statistically powered result.
+
+**Ground truth (`data/instances.jsonl` diff, revealed only after prediction):**
+`src/_pytest/skipping.py::pytest_runtest_setup` and
+`src/_pytest/skipping.py::pytest_runtest_call`.
+
+| Condition | What I could see | My top prediction | Result |
+|---|---|---|---|
+| Control (raw) | Full nested pytest run showing `add_marker(xfail)` then `assert 0`, full traceback to `test_skipping.py:440` | `_pytest/skipping.py` — specifically `pytest_runtest_makereport` / `evaluate_xfail_marks` | **File-level hit. Function-level near-miss** — real fix functions (`pytest_runtest_setup`, `pytest_runtest_call`) were in my explored candidate set from the same `grep` but not my #1 pick. |
+| Static (rtk `rtk test` output) | Only the 3 `FAILED <name>: assert 0` lines shown in Section 3 | Same file, `_pytest/skipping.py` | **File-level hit**, same confidence as Control — because the **problem statement itself** names `request.node.add_marker` and the exact xfail-vs-6.0 behavior change, independent of the terminal log. |
+
+**Honest interpretation:** for this one instance, compression did **not**
+create a tax, because the issue description carried the discriminating
+signal on its own. This complicates a naive "compression always hurts"
+story and matches something GraphLocator's paper itself shows: symptom
+vertices are often locatable directly from issue text; it's the *causal
+walk to the root cause* (here, distinguishing `pytest_runtest_setup` vs.
+`pytest_runtest_call` vs. `pytest_runtest_makereport` as the actual fix
+site) that raw execution detail would help with — and neither condition
+gave me enough to nail that at the function level in one pass.
+
+**The Django instance was not usable for this trial** — I read
+`gold_patch.diff` before recording a prediction while investigating the
+compression behavior in Section 3, so that instance is real evidence for
+Section 3 but cannot honestly be reported as a blind localization result.
+
+## 5. Error taxonomy (updated)
+
+| ID | Category | Real evidence |
+|---|---|---|
+| **T6 (new)** | Unrecognized-runner collapse | Django run: 100% of failure detail dropped, not just the traceback body — even the failing test *names* and count-by-type are gone from the compressed text, replaced by a generic tail. |
+| T1 | Lost value evidence | Present in the raw Django log (`AssertionError: Tuples differ: (0, {'delete.User': 0}) != (0, {})`) and fully absent from the compressed output. |
+| T2 | Lost stack frames | Both real runs: file:line tracebacks present in raw, absent in compressed. |
+| T5 | Over-summarized reason | pytest run: `assert 0` survived as the one-line reason and was *not* discriminating (many different bugs produce `assert 0`); only the problem statement rescued localizability in this case. |
+
+## 6. What's still needed for a statistically real quantitative result
+
+This report is honest about its limits: **2 real live instances, 1 clean
+blind trial.** To get the kind of Control-vs-Static hit-rate table the
+original WP1 brief asks for (N=15–20, fully automated, no manual proxying),
+`run_wp1_benchmark.py` needs to actually call an LLM via the API rather
+than me reasoning through it by hand in this chat. That requires
+`ANTHROPIC_API_KEY` in the execution environment — not available in this
+sandbox. Everything else in the pipeline (real repo checkout, real test
+execution, real `rtk` compression) is already working end to end, verified
+with the two instances above; the only missing piece to scale to N=15 is
+the credential.

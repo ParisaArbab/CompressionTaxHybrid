@@ -1,0 +1,136 @@
+============================= test session starts ==============================
+platform linux -- Python 3.9.25, pytest-6.0.0rc2.dev33+g7f7a36478.d20260813, py-1.11.0, pluggy-0.13.1 -- /home/claude/wp1_real/venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/claude/wp1_real/repos/pytest_repo, configfile: pyproject.toml
+collecting ... collected 81 items / 47 deselected / 34 selected
+
+testing/test_skipping.py::TestXFail::test_xfail_simple[True] PASSED      [  2%]
+testing/test_skipping.py::TestXFail::test_xfail_simple[False] PASSED     [  5%]
+testing/test_skipping.py::TestXFail::test_xfail_xpassed PASSED           [  8%]
+testing/test_skipping.py::TestXFail::test_xfail_using_platform PASSED    [ 11%]
+testing/test_skipping.py::TestXFail::test_xfail_xpassed_strict PASSED    [ 14%]
+testing/test_skipping.py::TestXFail::test_xfail_run_anyway PASSED        [ 17%]
+testing/test_skipping.py::TestXFail::test_xfail_run_with_skip_mark[test_input0-expected0] PASSED [ 20%]
+testing/test_skipping.py::TestXFail::test_xfail_run_with_skip_mark[test_input1-expected1] PASSED [ 23%]
+testing/test_skipping.py::TestXFail::test_xfail_evalfalse_but_fails PASSED [ 26%]
+testing/test_skipping.py::TestXFail::test_xfail_not_report_default PASSED [ 29%]
+testing/test_skipping.py::TestXFail::test_xfail_not_run_xfail_reporting PASSED [ 32%]
+testing/test_skipping.py::TestXFail::test_xfail_not_run_no_setup_run PASSED [ 35%]
+testing/test_skipping.py::TestXFail::test_xfail_xpass PASSED             [ 38%]
+testing/test_skipping.py::TestXFail::test_xfail_imperative PASSED        [ 41%]
+testing/test_skipping.py::TestXFail::test_xfail_imperative_in_setup_function PASSED [ 44%]
+testing/test_skipping.py::TestXFail::test_dynamic_xfail_no_run PASSED    [ 47%]
+testing/test_skipping.py::TestXFail::test_dynamic_xfail_set_during_funcarg_setup PASSED [ 50%]
+testing/test_skipping.py::TestXFail::test_dynamic_xfail_set_during_runtest_failed FAILED [ 52%]
+testing/test_skipping.py::TestXFail::test_dynamic_xfail_set_during_runtest_passed_strict FAILED [ 55%]
+testing/test_skipping.py::TestXFail::test_xfail_raises[TypeError-TypeError-*1 xfailed*] PASSED [ 58%]
+testing/test_skipping.py::TestXFail::test_xfail_raises[(AttributeError, TypeError)-TypeError-*1 xfailed*] PASSED [ 61%]
+testing/test_skipping.py::TestXFail::test_xfail_raises[TypeError-IndexError-*1 failed*] PASSED [ 64%]
+testing/test_skipping.py::TestXFail::test_xfail_raises[(AttributeError, TypeError)-IndexError-*1 failed*] PASSED [ 67%]
+testing/test_skipping.py::TestXFail::test_strict_sanity PASSED           [ 70%]
+testing/test_skipping.py::TestXFail::test_strict_xfail[True] PASSED      [ 73%]
+testing/test_skipping.py::TestXFail::test_strict_xfail[False] PASSED     [ 76%]
+testing/test_skipping.py::TestXFail::test_strict_xfail_condition[True] PASSED [ 79%]
+testing/test_skipping.py::TestXFail::test_strict_xfail_condition[False] PASSED [ 82%]
+testing/test_skipping.py::TestXFail::test_xfail_condition_keyword[True] PASSED [ 85%]
+testing/test_skipping.py::TestXFail::test_xfail_condition_keyword[False] PASSED [ 88%]
+testing/test_skipping.py::TestXFail::test_strict_xfail_default_from_file[true] PASSED [ 91%]
+testing/test_skipping.py::TestXFail::test_strict_xfail_default_from_file[false] PASSED [ 94%]
+testing/test_skipping.py::TestXFailwithSetupTeardown::test_failing_setup_issue9 PASSED [ 97%]
+testing/test_skipping.py::TestXFailwithSetupTeardown::test_failing_teardown_issue9 PASSED [100%]
+
+=================================== FAILURES ===================================
+____________ TestXFail.test_dynamic_xfail_set_during_runtest_failed ____________
+
+self = <test_skipping.TestXFail object at 0x7f04d9790f70>
+testdir = <Testdir local('/tmp/pytest-of-root/pytest-0/test_dynamic_xfail_set_during_runtest_failed0')>
+
+    def test_dynamic_xfail_set_during_runtest_failed(self, testdir: Testdir) -> None:
+        # Issue #7486.
+        p = testdir.makepyfile(
+            """
+            import pytest
+            def test_this(request):
+                request.node.add_marker(pytest.mark.xfail(reason="xfail"))
+                assert 0
+        """
+        )
+        result = testdir.runpytest(p)
+>       result.assert_outcomes(xfailed=1)
+E       AssertionError: assert {'errors': 0,...pped': 0, ...} == {'errors': 0,...pped': 0, ...}
+E         Omitting 4 identical items, use -vv to show
+E         Differing items:
+E         {'failed': 1} != {'failed': 0}
+E         {'xfailed': 0} != {'xfailed': 1}
+E         Full diff:
+E           {
+E            'errors': 0,...
+E         
+E         ...Full output truncated (13 lines hidden), use '-vv' to show
+
+/home/claude/wp1_real/repos/pytest_repo/testing/test_skipping.py:440: AssertionError
+----------------------------- Captured stdout call -----------------------------
+============================= test session starts ==============================
+platform linux -- Python 3.9.25, pytest-6.0.0rc2.dev33+g7f7a36478.d20260813, py-1.11.0, pluggy-0.13.1
+rootdir: /tmp/pytest-of-root/pytest-0/test_dynamic_xfail_set_during_runtest_failed0
+collected 1 item
+
+test_dynamic_xfail_set_during_runtest_failed.py F                        [100%]
+
+=================================== FAILURES ===================================
+__________________________________ test_this ___________________________________
+
+request = <FixtureRequest for <Function test_this>>
+
+    def test_this(request):
+        request.node.add_marker(pytest.mark.xfail(reason="xfail"))
+>       assert 0
+E       assert 0
+
+test_dynamic_xfail_set_during_runtest_failed.py:4: AssertionError
+=========================== short test summary info ============================
+FAILED test_dynamic_xfail_set_during_runtest_failed.py::test_this - assert 0
+============================== 1 failed in 0.01s ===============================
+________ TestXFail.test_dynamic_xfail_set_during_runtest_passed_strict _________
+
+self = <test_skipping.TestXFail object at 0x7f04d97814c0>
+testdir = <Testdir local('/tmp/pytest-of-root/pytest-0/test_dynamic_xfail_set_during_runtest_passed_strict0')>
+
+    def test_dynamic_xfail_set_during_runtest_passed_strict(
+        self, testdir: Testdir
+    ) -> None:
+        # Issue #7486.
+        p = testdir.makepyfile(
+            """
+            import pytest
+            def test_this(request):
+                request.node.add_marker(pytest.mark.xfail(reason="xfail", strict=True))
+        """
+        )
+        result = testdir.runpytest(p)
+>       result.assert_outcomes(failed=1)
+E       AssertionError: assert {'errors': 0,...pped': 0, ...} == {'errors': 0,...pped': 0, ...}
+E         Omitting 4 identical items, use -vv to show
+E         Differing items:
+E         {'failed': 0} != {'failed': 1}
+E         {'passed': 1} != {'passed': 0}
+E         Full diff:
+E           {
+E            'errors': 0,...
+E         
+E         ...Full output truncated (13 lines hidden), use '-vv' to show
+
+/home/claude/wp1_real/repos/pytest_repo/testing/test_skipping.py:454: AssertionError
+----------------------------- Captured stdout call -----------------------------
+============================= test session starts ==============================
+platform linux -- Python 3.9.25, pytest-6.0.0rc2.dev33+g7f7a36478.d20260813, py-1.11.0, pluggy-0.13.1
+rootdir: /tmp/pytest-of-root/pytest-0/test_dynamic_xfail_set_during_runtest_passed_strict0
+collected 1 item
+
+test_dynamic_xfail_set_during_runtest_passed_strict.py .                 [100%]
+
+============================== 1 passed in 0.00s ===============================
+=========================== short test summary info ============================
+FAILED testing/test_skipping.py::TestXFail::test_dynamic_xfail_set_during_runtest_failed
+FAILED testing/test_skipping.py::TestXFail::test_dynamic_xfail_set_during_runtest_passed_strict
+================= 2 failed, 32 passed, 47 deselected in 1.03s ==================

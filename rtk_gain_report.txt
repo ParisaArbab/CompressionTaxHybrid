@@ -1,0 +1,19 @@
+RTK Token Savings (Global Scope)
+════════════════════════════════════════════════════════════
+
+Total commands:    3
+Input tokens:      5.1K
+Output tokens:     369
+Tokens saved:      4.7K (92.8%)
+Total exec time:   4.3s (avg 1.4s)
+Efficiency meter: ██████████████████████░░ 92.8%
+
+By Command
+───────────────────────────────────────────────────────────────────────
+  #  Command                   Count  Saved    Avg%    Time  Impact    
+───────────────────────────────────────────────────────────────────────
+ 1.  rtk test /home/claude...      1   1.9K   96.0%    1.6s  ██████████
+ 2.  rtk summary                   1   1.8K   92.9%    1.4s  ██████████
+ 3.  rtk test /home/claude...      1    991   86.8%    1.3s  █████░░░░░
+───────────────────────────────────────────────────────────────────────
+
