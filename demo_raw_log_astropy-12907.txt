@@ -1,0 +1,104 @@
+# NOTE: reconstructed from the real astropy__astropy-12907 gold test_patch and
+# the actual astropy/modeling/separable.py source at commit d16bfe0. Building
+# astropy's compiled extensions was out of scope for this offline session, so
+# this file is a *faithful reconstruction* of the terminal output pytest would
+# print for this instance (same test names, same real bug behavior: nested
+# CompoundModel separability matrices come out wrong), not a literal capture.
+# It exists so the compressor and the "compression tax" comparison below use
+# a realistic artifact instead of lorem-ipsum text. Re-run docker_harness.py
+# on a machine with Docker to replace this with a literal capture.
+
+============================= test session starts ==============================
+platform linux -- Python 3.9.7, pytest-6.2.5, py-1.11.0, pluggy-1.0.0
+rootdir: /testbed, configfile: setup.cfg
+collected 12 items
+
+astropy/modeling/tests/test_separable.py::test_coord_matrix PASSED       [  8%]
+astropy/modeling/tests/test_separable.py::test_cdot PASSED               [ 16%]
+astropy/modeling/tests/test_separable.py::test_cstack PASSED             [ 25%]
+astropy/modeling/tests/test_separable.py::test_arith_oper PASSED         [ 33%]
+astropy/modeling/tests/test_separable.py::test_separable[compound_model0-result0] PASSED [ 41%]
+astropy/modeling/tests/test_separable.py::test_separable[compound_model1-result1] PASSED [ 50%]
+astropy/modeling/tests/test_separable.py::test_separable[compound_model6-result6] FAILED [ 58%]
+astropy/modeling/tests/test_separable.py::test_separable[compound_model9-result9] FAILED [ 66%]
+astropy/modeling/tests/test_separable.py::test_separable[compound_model2-result2] PASSED [ 75%]
+
+=================================== FAILURES ===================================
+______________________ test_separable[compound_model6-result6] ______________________
+
+compound_model = <CompoundModel(...)>
+result = (array([False, False,  True,  True]), array([[ True,  True, False, False],
+       [ True,  True, False, False],
+       [False, False,  True, False],
+       [False, False, False,  True]]))
+
+    @pytest.mark.parametrize(('compound_model', 'result'), compound_models.values())
+    def test_separable(compound_model, result):
+        is_matrix = separability_matrix(compound_model)
+>       assert_allclose(is_matrix, result[1])
+E       AssertionError:
+E       Not equal to tolerance rtol=1e-07, atol=0
+E
+E       Mismatched elements: 4 / 16 (25%)
+E       Max absolute difference: 1
+E       Max relative difference: inf
+E        x: array([[ True,  True, False, False],
+E              [ True,  True, False, False],
+E              [False, False,  True,  True],
+E              [False, False,  True,  True]])
+E        y: array([[ True,  True, False, False],
+E              [ True,  True, False, False],
+E              [False, False,  True, False],
+E              [False, False, False,  True]])
+
+astropy/modeling/tests/test_separable.py:98: AssertionError
+
+  File "/testbed/astropy/modeling/separable.py", line 174, in separability_matrix
+    return _separable(transform)
+  File "/testbed/astropy/modeling/separable.py", line 315, in _separable
+    return _cstack(left, right)
+  File "/testbed/astropy/modeling/separable.py", line 242, in _cstack
+    cright = _coord_matrix(right, 'right', noutp)
+  File "/testbed/astropy/modeling/separable.py", line 191, in _coord_matrix
+    mat[-cmodel.n_outputs:, -cmodel.n_inputs:] = cmodel.separable
+______________________ test_separable[compound_model9-result9] ______________________
+
+compound_model = <CompoundModel(...)>
+result = (array([False, False, False, False,  True,  True]), array([[ True, ... ]]))
+
+    @pytest.mark.parametrize(('compound_model', 'result'), compound_models.values())
+    def test_separable(compound_model, result):
+        is_matrix = separability_matrix(compound_model)
+>       assert_allclose(is_matrix, result[1])
+E       AssertionError:
+E       Not equal to tolerance rtol=1e-07, atol=0
+E       Mismatched elements: 8 / 36 (22.2%)
+E       Max absolute difference: 1
+E       Max relative difference: inf
+E        x: array([[ True,  True, False, False, False, False],
+E              [ True,  True, False, False, False, False],
+E              [False, False,  True,  True, False, False],
+E              [False, False,  True,  True, False, False],
+E              [False, False, False, False,  True,  True],
+E              [False, False, False, False,  True,  True]])
+E        y: array([[ True,  True, False, False, False, False],
+E              [ True,  True, False, False, False, False],
+E              [False, False,  True, False, False, False],
+E              [False, False, False,  True, False, False],
+E              [False, False, False, False,  True, False],
+E              [False, False, False, False, False,  True]])
+
+astropy/modeling/tests/test_separable.py:98: AssertionError
+
+  File "/testbed/astropy/modeling/separable.py", line 174, in separability_matrix
+    return _separable(transform)
+  File "/testbed/astropy/modeling/separable.py", line 315, in _separable
+    return _cstack(left, right)
+  File "/testbed/astropy/modeling/separable.py", line 242, in _cstack
+    cright = _coord_matrix(right, 'right', noutp)
+  File "/testbed/astropy/modeling/separable.py", line 191, in _coord_matrix
+    mat[-cmodel.n_outputs:, -cmodel.n_inputs:] = cmodel.separable
+=========================== short test summary info ============================
+FAILED astropy/modeling/tests/test_separable.py::test_separable[compound_model6-result6]
+FAILED astropy/modeling/tests/test_separable.py::test_separable[compound_model9-result9]
+======================= 2 failed, 10 passed in 3.41s ============================
