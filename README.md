@@ -17,6 +17,19 @@ The following diagram shows the overall Work Package 1 architecture, including t
 ![WP1 Hybrid Architecture](images/wp1_architecture-hybrid.png)
 
 
+## Hybrid Fault Localization Method
+
+The hybrid approach combines multiple fault localization methods to improve the identification of likely faulty files.
+
+![Hybrid Fault Localization Method](images/Hybrid-Method.png)
+
+
+## System Architecture
+
+The following diagram shows the overall Work Package 1 architecture, including the main files, processing steps, and how the components interact.
+
+![WP1 Hybrid Architecture](images/wp1_architecture-hybrid.png)
+
 ## What actually ran in this session (verifiable, no API key needed)
 
 1. **`fetch_instances.py`** — pulled real `SWE-bench_Lite` (300 instances)
